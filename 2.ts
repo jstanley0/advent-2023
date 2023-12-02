@@ -39,13 +39,15 @@ async function run() {
     for await (const line of rl) {
         // Game 1: 3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green
         const [game_and_id, game_text] = line.split(": ")
+        if (typeof game_text !== 'string')
+            continue
         let game : Game = {
             id: parseInt(game_and_id.split(' ').pop()),
             handfuls: []
         }
-        game_text.split("; ").forEach((handfulText: string) => {
+        game_text.split("; ").forEach(handfulText => {
             let handful : Handful = {}
-            handfulText.split(", ").forEach((cubeText: string) => {
+            handfulText.split(", ").forEach(cubeText => {
                 const [count, color] = cubeText.split(" ")
                 handful[color] = parseInt(count)
             })
