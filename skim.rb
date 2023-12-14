@@ -2,6 +2,7 @@
 # since this is a common pattern in AoC and I often screw it up
 
 require 'byebug'
+require 'digest'
 require 'stringio'
 require_relative 'search'
 
@@ -290,6 +291,12 @@ class Skim
 
   def flip_h
     dup_with_data(data.map(&:reverse))
+  end
+
+  def hash
+    digest = Digest::MD5.new
+    data.each { digest << _1.join }
+    digest.hexdigest
   end
 
   SearchContext = Struct.new(:skim, :diag, :path_proc, :goal_or_proc, :est_dist_proc)
