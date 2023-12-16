@@ -115,6 +115,10 @@ class Skim
     x >= 0 && y >= 0 && y < height && x < width(y)
   end
 
+  def check_bounds!(x, y)
+    raise "(#{x}, #{y}) is out of bounds" unless in_bounds?(x, y)
+  end
+
   def subset(x, y, w, h)
     sub_data = []
     data[y...y+h].each do |row|
@@ -181,10 +185,12 @@ class Skim
   end
 
   def [](x, y)
+    check_bounds!(x, y)
     data[y][x]
   end
 
   def []=(x, y, val)
+    check_bounds!(x, y)
     data[y][x] = val
   end
 
@@ -213,8 +219,8 @@ class Skim
     data.all? { |row| row.all? { |v| yield v } }
   end
 
-  def count(v, &block)
-    data.sum { |row| row.count(v, &block) }
+  def count(...)
+    data.sum { |row| row.count(...) }
   end
 
   def find_coords(value)
