@@ -25,8 +25,8 @@ class Skim
   #  num: treat the values as numeric
   # block:
   #  if given, transform each string on the way in
-  def self.read(src = ARGF, sep: nil, rec: true, square: false, num: false)
-    skim = Skim.new(sep: sep)
+  def self.read(src = ARGF, sep: nil, rec: true, square: false, num: false, &)
+    skim = Skim.new(sep:)
     data = []
     loop do
       line = src.gets
@@ -44,7 +44,7 @@ class Skim
       ld = ld.map(&:to_i) if num
 
       if block_given?
-        ld = ld.map { |val| yield val }
+        ld = ld.map(&)
       end
 
       data << ld
@@ -59,11 +59,11 @@ class Skim
 
   # like #read, but returns an array of Skims separated by blank lines
   # if count is nil, read until EOF, otherwise read that many
-  def self.read_many(src = ARGF, count: nil, sep: nil, rec: true, square: false, num: false, &block)
+  def self.read_many(src = ARGF, count: nil, sep: nil, rec: true, square: false, num: false, &)
     src = StringIO.new(src) if src.is_a?(String)
     skims = []
     loop do
-      skim = Skim.read(src, sep: sep, rec: rec, square: square, num: num, &block)
+      skim = Skim.read(src, sep:, rec:, square:, num:, &)
       break if skim.empty?
       skims << skim
       break if skims.size == count
@@ -160,7 +160,7 @@ class Skim
   end
 
   def pad(border_size, pad_value)
-    n = Skim.new(width + 2 * border_size, height + 2 * border_size, pad_value, sep: sep)
+    n = Skim.new(width + 2 * border_size, height + 2 * border_size, pad_value, sep:)
     each do |val, x, y|
       n[x + border_size, y + border_size] = val
     end
@@ -211,12 +211,12 @@ class Skim
     data == rhs.data
   end
 
-  def any?
-    data.any? { |row| row.any? { |v| yield v } }
+  def any?(&)
+    data.any? { |row| row.any?(&) }
   end
 
-  def all?
-    data.all? { |row| row.all? { |v| yield v } }
+  def all?(&)
+    data.all? { |row| row.all?(&) }
   end
 
   def count(...)
@@ -243,16 +243,16 @@ class Skim
 
   # yield neighbors (val, x, y) of the given element
   # if `diag` is false, only yield orthogonal ones (not diagonals)
-  def nabes(x, y, diag: true, &block)
-    check_nabe(x - 1, y, &block)
-    check_nabe(x + 1, y, &block)
-    check_nabe(x, y - 1, &block)
-    check_nabe(x, y + 1, &block)
+  def nabes(x, y, diag: true, &)
+    check_nabe(x - 1, y, &)
+    check_nabe(x + 1, y, &)
+    check_nabe(x, y - 1, &)
+    check_nabe(x, y + 1, &)
     if diag
-      check_nabe(x - 1, y - 1, &block)
-      check_nabe(x - 1, y + 1, &block)
-      check_nabe(x + 1, y - 1, &block)
-      check_nabe(x + 1, y + 1, &block)
+      check_nabe(x - 1, y - 1, &)
+      check_nabe(x - 1, y + 1, &)
+      check_nabe(x + 1, y - 1, &)
+      check_nabe(x + 1, y + 1, &)
     end
   end
 
@@ -263,14 +263,14 @@ class Skim
   # return a flat array of the values of the neighbors
   def nv(x, y, diag: true)
     vals = []
-    nabes(x, y, diag: diag) do |val|
+    nabes(x, y, diag:) do |val|
       vals << val
     end
     vals
   end
 
   private def dup_with_data(data)
-    other = Skim.new(sep: sep)
+    other = Skim.new(sep:)
     other.data = data
     other
   end
