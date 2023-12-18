@@ -4,6 +4,7 @@
 require 'byebug'
 require 'digest'
 require 'stringio'
+require 'set'
 require_relative 'search'
 
 class Skim
@@ -237,6 +238,22 @@ class Skim
       row.each_with_index do |val, x|
         self[x, y] = yield val, x, y
       end
+    end
+    self
+  end
+
+  def flood_fill!(x, y, val)
+    rv = self[x, y]
+    cq = Set.new
+    cq << [x, y]
+    until cq.empty?
+      x, y = cq.first
+      cq.delete cq.first
+      self[x, y] = val
+      cq << [x - 1, y] if x > 0 && self[x - 1, y] == rv
+      cq << [x + 1, y] if x < width - 1 && self[x + 1, y] == rv
+      cq << [x, y - 1] if y > 0 && self[x, y - 1] == rv
+      cq << [x, y + 1] if y < height - 1 && self[x, y + 1] == rv
     end
     self
   end
