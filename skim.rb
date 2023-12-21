@@ -5,6 +5,7 @@ require 'byebug'
 require 'digest'
 require 'stringio'
 require 'set'
+require 'colorize'
 require_relative 'search'
 
 class Skim
@@ -149,15 +150,30 @@ class Skim
     self
   end
 
-  def print(stream = $stdout)
+  # chunk: number or pair of numbers; if given, add an extra space around chunks of this size
+  # highlights: list of elements to highlight if present (will color other elements grey)
+  def print(stream = $stdout, chunk: nil, highlights: [])
     delim = sep.to_s
     rec_width = flatten.map { |el| el.to_s.size }.max
     delim = ' ' if delim.empty? && rec_width > 1
+    hchunk, vchunk = chunk
+    vchunk ||= hchunk # chunk can be array (or single value for square chunking)
 
-    data.each do |row|
-      stream.puts row.map { |val| "%*s" % [rec_width, val] }.join(delim)
+    data.each_with_index do |row, i|
+      stream.puts row.map { |val| "%*s" % [rec_width, val] }.map.with_index { |val, i| post_process(val, i, hchunk, highlights) }.join(delim)
+      stream.puts if vchunk && ((i + 1) % vchunk == 0)
     end
     stream.puts
+  end
+
+  HIGHLIGHT_COLORS = %i[light_cyan light_magenta light_white light_green light_red light_yellow light_blue]
+  def post_process(val, i, hchunk, highlights)
+    unless highlights.empty?
+      color_index = highlights.find_index(val)
+      val = val.colorize(color_index ? HIGHLIGHT_COLORS[color_index % HIGHLIGHT_COLORS.size] : :grey)
+    end
+    val += " " if hchunk && ((i + 1) % hchunk) == 0
+    val
   end
 
   def pad(border_size, pad_value)
@@ -222,6 +238,14 @@ class Skim
 
   def count(...)
     data.sum { |row| row.count(...) }
+  end
+
+  def count_window(x, y, w, h, c)
+    check_bounds!(x, y)
+    check_bounds!(x + w - 1, y + h - 1)
+    data[y...y+h].sum do |row|
+      row[x...x+w].count(c)
+    end
   end
 
   def find_coords(value)
