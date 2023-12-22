@@ -234,7 +234,11 @@ function inspectModules(modules: Module[], depth: number) {
   inspectModules(nextLevel, depth - 1)
 }
 
-let periodicityWatch = {'nx': 0, 'sp': 0, 'cc': 0, 'jq': 0}
+let periodicityWatch: { [key: string]: number } = {}
+const rx_source = network.modules.rx.sources[0]
+network.modules[rx_source].sources.forEach(source => {
+  periodicityWatch[source] = 0
+})
 for(let i = 1;; ++i) {
   network.broadcast(i, periodicityWatch)
   const period = Object.values(periodicityWatch).map(n => BigInt(n)).reduce((n, m) => n * m)
