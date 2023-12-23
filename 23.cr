@@ -1,13 +1,13 @@
 alias Coord = Tuple(Int32, Int32)
-alias VisitedSet = Set(Coord)
-alias Edge = Tuple(Int32, String)
-alias DAG = Hash(String, Array(Edge))
+alias Edge = NamedTuple(len: Int32, node: Int32)
+alias DAG = Array(Array(Edge))
 
 class MazeRunner
   @map : Array(Array(Char))
   @graph = DAG.new
-  @node_map = {} of Coord => String
-  @next_node = "A"
+  @node_map = {} of Coord => Int32
+  @next_node = 0
+  @end_node_num : (Int32|Nil) = nil
   @longest_hike = 0
 
   def initialize(map, @climb_uphill = false)
@@ -17,13 +17,18 @@ class MazeRunner
 
     start_x = @map[0].index('.').not_nil!
     @map[0][start_x] = '#'
-    generate_graph({start_x, 1}, "start")
+    generate_graph({start_x, 1}, next_node_num)
   end
 
-  def next_node_name
+  def next_node_num
+    raise "too many nodes for bitmask" if @next_node >= 128
     ret = @next_node
-    @next_node = ret.succ
+    @next_node += 1
     ret
+  end
+
+  def end_node_num
+    @end_node_num ||= next_node_num
   end
 
   SLOPES = {
@@ -55,12 +60,10 @@ class MazeRunner
   end
 
   def add_edge(from, to, len)
-    @graph[from] ||= [] of Edge
-    @graph[from] << {len + 1, to}
-    if @climb_uphill
-      @graph[to] ||= [] of Edge
-      @graph[to] << {len + 1, from}
-    end
+    @graph << [] of Edge if @graph.size <= from
+    @graph << [] of Edge if @graph.size <= to
+    @graph[from] << { len: len, node: to }
+    @graph[to] << { len: len, node: from } if @climb_uphill
     nil
   end
 
@@ -69,11 +72,11 @@ class MazeRunner
     @map[y][x] == '*'
   end  
 
-  def generate_graph(coord, from_node, visited = VisitedSet.new)
-    len = 0
+  def generate_graph(coord, from_node, visited = Set(Coord).new)
+    len = 1
     loop do
       if reached_end?(coord)
-        add_edge(from_node, "end", len)
+        add_edge(from_node, end_node_num, len)
         break
       end
 
@@ -85,7 +88,7 @@ class MazeRunner
         if @node_map.has_key?(coord)
           add_edge(from_node, @node_map[coord], len)
         else
-          new_node = @node_map[coord] = next_node_name
+          new_node = @node_map[coord] = next_node_num
           add_edge(from_node, new_node, len)
           neighbors.each do |coord|
             generate_graph(coord, new_node, visited.dup)
@@ -100,18 +103,13 @@ class MazeRunner
     nil
   end
 
-  def search(from = "start", visited = Set(String).new, cumulative_len = 0)
-    #if from == "start"
-    #  p! @graph
-    #  p! @node_map
-    #end
-    @graph[from].reject { |edge| visited.includes?(edge.last) }.each do |len, node|
-      # puts "considering #{from} => #{node} having seen #{visited}"
-      if node == "end"
-        @longest_hike = {@longest_hike, cumulative_len + len}.max
+  def search(from = 0, visited = 0u128, cumulative_len = 0)
+    @graph[from].select { |edge| (visited & (1u128 << edge[:node])) == 0 }.each do |edge|
+      if edge[:node] == end_node_num
+        @longest_hike = {@longest_hike, cumulative_len + edge[:len]}.max
         break
       end
-      search(node, visited.dup.add(node), cumulative_len + len)
+      search(edge[:node], visited | (1u128 << edge[:node]), cumulative_len + edge[:len])
     end
     self
   end
