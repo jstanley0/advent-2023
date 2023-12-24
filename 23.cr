@@ -104,12 +104,12 @@ class MazeRunner
   end
 
   def search(from = 0, visited = 0u128, cumulative_len = 0)
-    @graph[from].select { |edge| (visited & (1u128 << edge[:node])) == 0 }.each do |edge|
-      if edge[:node] == end_node_num
-        @longest_hike = {@longest_hike, cumulative_len + edge[:len]}.max
-        break
+    if (end_edge = @graph[from].find { |edge| edge[:node] == end_node_num })
+      @longest_hike = {@longest_hike, cumulative_len + end_edge[:len]}.max
+    else
+      @graph[from].select { |edge| (visited & (1u128 << edge[:node])) == 0 }.each do |edge|
+        search(edge[:node], visited | (1u128 << edge[:node]), cumulative_len + edge[:len])
       end
-      search(edge[:node], visited | (1u128 << edge[:node]), cumulative_len + edge[:len])
     end
     self
   end
