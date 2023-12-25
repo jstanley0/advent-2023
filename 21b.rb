@@ -25,6 +25,7 @@ subcount = ->(mx, c) do
 end
 
 edge_counts = []
+step_counts = []
 fringe = Set.new([[x, y]])
 (steps + 1).times do |step|
   step_char = step.even? ? 'O' : 'o'
@@ -38,11 +39,16 @@ fringe = Set.new([[x, y]])
   fringe = next_fringe
 
   if subcount.(spill_ex, step_char) > 0
+    step_counts << step
     edge_counts << emap.count(step_char)
     puts "reached edge at step #{step}; count #{edge_counts.last}"
     spill_ex -= 1
     if spill_ex < 0
-      puts "I guess I just ask Wolfram to extrapolate from #{edge_counts.join(",")}"
+      c = edge_counts[0]
+      b = (4 * edge_counts[1] - edge_counts[2] - 3 * c) / 2
+      a = edge_counts[1] - c - b
+      n = (steps - step_counts[0]) / (step_counts[1] - step_counts[0])
+      puts a * n * n + b * n + c
       exit
     end
   end
