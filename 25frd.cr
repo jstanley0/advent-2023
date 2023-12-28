@@ -18,9 +18,7 @@ class Graph
     from < to ? {from, to} : {to, from}
   end
 
-  def count_visit(from, to)
-    return if from.nil?
-
+  def count_edge_traversal(from, to)
     edge = canonical_edge(from, to)
     @stats[edge] ||= 0
     @stats[edge] += 1
@@ -35,49 +33,62 @@ class Graph
   end
 
   def count(from)
-    # naive increment would count edges, not vertices
-    vertices = Set(String).new
-    bfs(from) do |_, to|
-      vertices << to
+    n = 0
+    bfs(from) do |node|
+      n += 1
       false
     end
-    vertices.size
+    n
   end
 
   def search(from, to)
-    bfs(from) do |a, b|
-      count_visit(a, b)
-      to == b
-    end
+    path = bfs(from) { |node| to == node }
+    path.each_cons(2) { |(from, to)| count_edge_traversal(from, to) }
+    path.any?
   end
 
   def stats(top = 10)
     @stats.to_a.sort_by { |(_edge, count)| -count }.first(top)
   end
 
-  # yields source vertex, dest vertex for each edge traversal (source vertex is nil for initial node)
-  # return true from the block to stop the search; in this case bfs will return true
+  private def build_path(path_links, start_node, target_node)
+    node = target_node
+    path = [node]
+    while (node = path_links[node]?)
+      path.unshift node
+      break if node == start_node
+    end
+    path
+  end
+  
+  # yields each node in order of traversal
+  # return true from the block if the target is found; in this case, bfs will return the path
+  # otherwise it will return an empty array
   def bfs(from)
     visited = Set(String).new
-    fringe = [{nil, from}]
+    path_links = {} of String => String
+    fringe = [from]
     until fringe.empty?
-      next_fringe = [] of Tuple(String, String)
-      while (edge = fringe.shift?)
-        from, to = edge
-        visited << to
-        return true if yield from, to
-        @links[to].each do |connection|
-          next_fringe << {to, connection} unless visited.includes?(connection)
+      next_fringe = [] of String
+      fringe.each do |node|
+        next if visited.includes?(node)
+        visited << node
+        return build_path(path_links, from, node) if yield node
+        @links[node].each do |connection|
+          unless visited.includes?(connection)
+            next_fringe << connection 
+            path_links[connection] ||= node
+          end
         end
       end
       fringe = next_fringe
     end
-    false
+    [] of String
   end
 end
 
 graph = Graph.new
-File.read_lines(ARGV.first).each do |line|
+File.each_line(ARGV.first) do |line|
   from, to = line.split(": ")
   targets = to.split
   targets.each do |target|
@@ -85,9 +96,11 @@ File.read_lines(ARGV.first).each do |line|
   end
 end
 
-# bfs between pairs of random nodes and count traffic on each edge
+# traverse paths between pairs of random nodes and count traffic on each edge
 # the "bridges" will tend to have the most
 1000.times { graph.search(graph.random_vertex, graph.random_vertex) }
+
+p! graph.stats
 
 graph.stats.map(&.first).each_combination(3) do |cut_candidates|
   puts "attempting cuts: #{cut_candidates.inspect}"
